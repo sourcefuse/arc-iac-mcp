@@ -93,6 +93,8 @@ app.delete('/mcp', async (req, res) => {
 });
 
 // Exported for Vercel — @vercel/node uses this as the request handler.
+import serverless from 'serverless-http';
+export const handler = serverless(app);
 export default app;
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : undefined;

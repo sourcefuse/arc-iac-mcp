@@ -495,3 +495,6 @@ All tools accept the **short name** without prefix or provider suffix:
 5. Open a pull request
 
 All tools must handle errors gracefully using the `err()` helper and return `{ content: [{ type: 'text', text: '...' }] }`.
+
+## License
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
