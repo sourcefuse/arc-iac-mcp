@@ -1,0 +1,23 @@
+# Terraform files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Build artifacts
+lambda-deploy/
+lambda-function.zip
+lambda-deployment.zip
+*.zip
+
+# Local files
+.DS_Store
