@@ -48,28 +48,28 @@ jobs:
           case "${{ matrix.environment }}" in
             dev)
               echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_DEV }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION_DEV || 'us-east-1' }}" >> $GITHUB_OUTPUT
+              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
               echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_DEV || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
               echo "backend_config=backend/config.dev.hcl" >> $GITHUB_OUTPUT
               echo "tfvars=tfvars/dev.tfvars" >> $GITHUB_OUTPUT
               ;;
             qa)
               echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_QA }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION_QA || 'us-east-1' }}" >> $GITHUB_OUTPUT
+              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
               echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_QA || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
               echo "backend_config=backend/config.qa.hcl" >> $GITHUB_OUTPUT
               echo "tfvars=tfvars/qa.tfvars" >> $GITHUB_OUTPUT
               ;;
             stg)
               echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_STG }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION_STG || 'us-east-1' }}" >> $GITHUB_OUTPUT
+              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
               echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_STG || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
               echo "backend_config=backend/config.stg.hcl" >> $GITHUB_OUTPUT
               echo "tfvars=tfvars/stg.tfvars" >> $GITHUB_OUTPUT
               ;;
             prod)
               echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_PROD }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION_PROD || 'us-east-1' }}" >> $GITHUB_OUTPUT
+              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
               echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_PROD || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
               echo "backend_config=backend/config.prod.hcl" >> $GITHUB_OUTPUT
               echo "tfvars=tfvars/prod.tfvars" >> $GITHUB_OUTPUT
