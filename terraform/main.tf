@@ -43,6 +43,7 @@ locals {
     paths = {
       "/" = {
         get = {
+          security = []
           responses = {
             "200" = {
               description = "Health response"
@@ -57,6 +58,7 @@ locals {
       }
       "/mcp" = {
         post = {
+          security = []
           responses = {
             "200" = {
               description = "MCP response"
@@ -69,6 +71,7 @@ locals {
           }
         }
         delete = {
+          security = []
           responses = {
             "200" = {
               description = "MCP session delete response"
