@@ -16,8 +16,18 @@ function createServer(): McpServer {
 
 // Build the Express app — used for HTTP (Render/local) and Vercel (serverless) modes.
 const app = express();
-app.use(cors());
 app.use(express.json());
+
+// Deployment diagnostics and header fix for AWS Lambda
+app.use((req, _res, next) => {
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    console.log(`[DEBUG] Method: ${req.method} Path: ${req.path}`);
+    console.log(`[DEBUG] Incoming Headers: ${JSON.stringify(req.headers)}`);
+    // Force the Accept header to satisfy the MCP SDK's strict check
+    req.headers.accept = 'application/json, text/event-stream';
+  }
+  next();
+});
 
 // Session store — keeps server+transport alive across multiple HTTP requests per client.
 // On serverless (Vercel) sessions are per-invocation; stateless fallback handles that.
@@ -38,12 +48,6 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
-  // On AWS Lambda, API Gateway/serverless-http might not pass headers in the exact format the MCP SDK expects.
-  // We force the Accept header to include both required types to avoid 406 errors.
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    req.headers['accept'] = 'application/json, text/event-stream';
-  }
-
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   // Path 1: known session — reuse transport (works for persistent processes like Render)
