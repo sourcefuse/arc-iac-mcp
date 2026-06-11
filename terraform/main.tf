@@ -84,6 +84,11 @@ locals {
           responses = {
             "204" = {
               description = "CORS preflight response"
+              headers = {
+                "Access-Control-Allow-Headers" = { type = "string" }
+                "Access-Control-Allow-Methods" = { type = "string" }
+                "Access-Control-Allow-Origin"  = { type = "string" }
+              }
             }
           }
           "x-amazon-apigateway-integration" = {
