@@ -411,7 +411,7 @@ Configure these in your repository settings:
 | `AWS_REGION` | V | Shared AWS Region (e.g., `us-east-1`) |
 
 #### GitHub Actions Flow
-Pushing to `develop` or `main` will trigger the `mcp-deploy.yml` workflow, which handles building, packaging, and deploying via Terraform to your `sourcef.us` hosted zone.
+Pushing to `develop` or `main` will trigger the `mcp-deploy.yml` workflow, which handles building, packaging, and deploying via Terraform to your `arc-poc.link` hosted zone.
 
 ### Environment Variables
 

@@ -7,6 +7,12 @@ on:
       - 'feat/*'
     tags:
       - 'v*'
+    paths:
+      - 'src/**'
+      - 'terraform/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/mcp-deploy.yml'
   workflow_dispatch:
 
 permissions:
