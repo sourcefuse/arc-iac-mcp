@@ -38,31 +38,52 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
-  // EMERGENCY FIX: If the method is tools/list, return the tools manually to bypass the stubbornly strict SDK.
-  // This ensures the test passes and Claude can see the tools.
-  if (req.method === 'POST' && !Array.isArray(req.body) && req.body?.method === 'tools/list') {
-    const server = createServer();
-    const anyServer = server as any;
-    // Extract registered tools from the SDK's internal object
-    const registeredTools = (server as any)._registeredTools || {};
-    const tools = Object.entries(registeredTools).map(([name, t]: [string, any]) => {
-      // Robust extraction of tool metadata from SDK internal structure
-      const inputSchema = t.inputSchema?.schema || t.inputSchema || { type: "object", properties: {} };
-      return {
-        name,
-        description: t.description || "",
-        inputSchema: inputSchema
-      };
-    });
+  const server = createServer();
+  const anyServer = server as any;
+  const body = req.body as any;
 
-    return res.json({
-      jsonrpc: "2.0",
-      id: req.body.id || 1,
-      result: { tools }
-    });
+  // EMERGENCY BYPASS: Manual JSON-RPC handling for AWS Lambda
+  // This bypasses the SDK's transport entirely to avoid 406 errors.
+  if (req.method === 'POST' && !Array.isArray(body)) {
+    // 1. Tool Listing
+    if (body?.method === 'tools/list') {
+      const registeredTools = anyServer._registeredTools || {};
+      const tools = Object.entries(registeredTools).map(([name, t]: [string, any]) => ({
+        name,
+        description: t.description,
+        inputSchema: t.inputSchema?.schema || t.inputSchema || { type: "object", properties: {} }
+      }));
+      return res.json({ jsonrpc: "2.0", id: body.id || 1, result: { tools } });
+    }
+
+    // 2. Tool Execution
+    if (body?.method === 'tools/call' && body?.params?.name) {
+      const toolName = body.params.name;
+      const tool = anyServer._registeredTools?.[toolName];
+      if (tool) {
+        try {
+          // Execute tool directly using its handler
+          const result = await tool.handler(body.params.arguments || {}, {});
+          return res.json({ jsonrpc: "2.0", id: body.id || 1, result });
+        } catch (err: any) {
+          console.error(`[MCP Tool Error] ${toolName}:`, err);
+          return res.status(500).json({
+            jsonrpc: "2.0",
+            id: body.id || 1,
+            error: { code: -32603, message: err.message || "Internal Tool Error" }
+          });
+        }
+      } else {
+        return res.status(404).json({
+          jsonrpc: "2.0",
+          id: body.id || 1,
+          error: { code: -32601, message: `Tool not found: ${toolName}` }
+        });
+      }
+    }
   }
 
-  // For all other calls, we use the SDK but with an aggressive header override.
+  // Fallback for everything else (like initialize)
   const requiredAccept = 'application/json, text/event-stream';
 
   // Directly overwrite the methods on the req object for maximum effectiveness
@@ -83,12 +104,9 @@ app.all('/mcp', async (req, res) => {
     return;
   }
 
-  const body = req.body as { method?: string } | Array<{ method?: string }> | undefined;
   const isInit = Array.isArray(body)
-    ? body.some(m => m?.method === 'initialize')
+    ? body.some((m: any) => m?.method === 'initialize')
     : body?.method === 'initialize';
-
-  const server = createServer();
 
   if (isInit) {
     // Path 2: initialize
