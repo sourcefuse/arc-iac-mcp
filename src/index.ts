@@ -38,6 +38,12 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
+  // On AWS Lambda, API Gateway/serverless-http might not pass headers in the exact format the MCP SDK expects.
+  // We force the Accept header to include both required types to avoid 406 errors.
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    req.headers['accept'] = 'application/json, text/event-stream';
+  }
+
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   // Path 1: known session — reuse transport (works for persistent processes like Render)
