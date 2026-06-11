@@ -43,6 +43,49 @@ Or add to your project's `.mcp.json`:
 }
 ```
 
+### Kiro
+
+**User-level** (`~/.kiro/settings/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "arc-iac": {
+      "url": "https://arc-iac-mcp.arc-poc.link/mcp",
+      "autoApprove": ["*"],
+      "disabled": false
+    }
+  }
+}
+```
+
+**Project-level** (`.kiro/settings/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "arc-iac": {
+      "url": "https://arc-iac-mcp.arc-poc.link/mcp",
+      "autoApprove": ["*"]
+    }
+  }
+}
+```
+
+### Cursor / Windsurf / Codeium
+
+`.cursor/mcp.json` or `.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "arc-iac": {
+      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
+    }
+  }
+}
+```
+
 ### MCP Inspector (Browser-based testing)
 
 ```bash
