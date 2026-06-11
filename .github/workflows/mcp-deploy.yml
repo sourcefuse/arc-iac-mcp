@@ -3,86 +3,31 @@ name: Deploy MCP Server
 on:
   push:
     branches:
-      - develop
       - main
       - 'feat/*'
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy'
-        required: true
-        type: choice
-        options:
-          - dev
-          - qa
-          - stg
-          - prod
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  TERRAFORM_VERSION: 1.5.0
+  TERRAFORM_VERSION: 1.7.0
   NODE_VERSION: 18
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ENVIRONMENT: prod
 
 jobs:
   deploy:
-    name: Deploy to ${{ matrix.environment }}
+    name: Deploy to Production
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.environment)) || github.ref == 'refs/heads/develop' && fromJSON('["dev"]') || startsWith(github.ref, 'refs/heads/feat/') && fromJSON('["dev"]') || github.ref == 'refs/heads/main' && fromJSON('["prod"]') || startsWith(github.ref, 'refs/tags/v') && fromJSON('["prod"]') || fromJSON('[]') }}
-      max-parallel: 1
-    environment: ${{ matrix.environment }}
+    environment: prod
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set Environment Variables
-        id: set-vars
-        run: |
-          case "${{ matrix.environment }}" in
-            dev)
-              echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_DEV }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
-              echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_DEV || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
-              echo "backend_config=backend/config.dev.hcl" >> $GITHUB_OUTPUT
-              echo "tfvars=tfvars/dev.tfvars" >> $GITHUB_OUTPUT
-              ;;
-            qa)
-              echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_QA }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
-              echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_QA || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
-              echo "backend_config=backend/config.qa.hcl" >> $GITHUB_OUTPUT
-              echo "tfvars=tfvars/qa.tfvars" >> $GITHUB_OUTPUT
-              ;;
-            stg)
-              echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_STG }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
-              echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_STG || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
-              echo "backend_config=backend/config.stg.hcl" >> $GITHUB_OUTPUT
-              echo "tfvars=tfvars/stg.tfvars" >> $GITHUB_OUTPUT
-              ;;
-            prod)
-              echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID_PROD }}" >> $GITHUB_OUTPUT
-              echo "aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_OUTPUT
-              echo "certificate_arn=${{ vars.ACM_CERTIFICATE_ARN_PROD || vars.ACM_CERTIFICATE_ARN_SOURCEFUSE }}" >> $GITHUB_OUTPUT
-              echo "backend_config=backend/config.prod.hcl" >> $GITHUB_OUTPUT
-              echo "tfvars=tfvars/prod.tfvars" >> $GITHUB_OUTPUT
-              ;;
-          esac
-
-      - name: Validate ACM certificate ARN
-        run: |
-          if [ -z "${{ steps.set-vars.outputs.certificate_arn }}" ]; then
-            echo "Missing ACM certificate ARN for ${{ matrix.environment }}."
-            echo "Set GitHub variable ACM_CERTIFICATE_ARN_SOURCEFUSE, or an environment-specific override like ACM_CERTIFICATE_ARN_DEV."
-            exit 1
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -109,9 +54,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ steps.set-vars.outputs.aws_account_id }}:role/github-actions-role
-          aws-region: ${{ steps.set-vars.outputs.aws_region }}
-          role-session-name: github-actions-mcp-${{ matrix.environment }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID_PROD }}:role/arc-iac-oidc-github-role 
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-mcp-prod
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -120,16 +65,21 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform
-        run: terraform init -backend-config=${{ steps.set-vars.outputs.backend_config }}
+        run: terraform init -backend-config=backend/config.prod.hcl
 
-      - name: Terraform Apply
+      - name: Terraform Plan
         working-directory: terraform
         run: |
           terraform plan \
-            -var-file=${{ steps.set-vars.outputs.tfvars }} \
-            -var="certificate_arn=${{ steps.set-vars.outputs.certificate_arn }}" \
+            -var-file="tfvars/prod.tfvars" \
+            -var="lambda_package_path=lambda-deployment.zip" \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="environment=${{ env.ENVIRONMENT }}" \
             -out=tfplan
-          terraform apply -auto-approve tfplan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve tfplan
 
       - name: Get Outputs
         id: outputs
@@ -147,7 +97,7 @@ jobs:
 
       - name: Deployment Summary
         run: |
-          echo "## 🎉 Deployed to ${{ matrix.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Deployed to Production" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**MCP Endpoint:** ${{ steps.outputs.outputs.mcp_endpoint }}" >> $GITHUB_STEP_SUMMARY
           echo "**Function:** ${{ steps.outputs.outputs.function_name }}" >> $GITHUB_STEP_SUMMARY

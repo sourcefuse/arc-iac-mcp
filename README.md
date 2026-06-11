@@ -397,6 +397,22 @@ npm install && npm run build
 PORT=3000 node dist/index.js
 ```
 
+### AWS Lambda + API Gateway
+
+This server is ready for deployment to AWS using the provided Terraform configuration and GitHub Actions workflow.
+
+#### Prerequisites (GitHub Secrets & Variables)
+
+Configure these in your repository settings:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `AWS_ACCOUNT_ID_PROD` | S | AWS Account ID for Production |
+| `AWS_REGION` | V | Shared AWS Region (e.g., `us-east-1`) |
+
+#### GitHub Actions Flow
+Pushing to `develop` or `main` will trigger the `mcp-deploy.yml` workflow, which handles building, packaging, and deploying via Terraform to your `sourcef.us` hosted zone.
+
 ### Environment Variables
 
 | Variable | Default | Description |

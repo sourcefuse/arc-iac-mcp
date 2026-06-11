@@ -13,8 +13,8 @@ variable "environment" {
   type        = string
 
   validation {
-    condition     = contains(["dev", "qa", "stg", "prod"], var.environment)
-    error_message = "Environment must be one of: dev, qa, stg, prod."
+    condition     = contains(["prod"], var.environment)
+    error_message = "Environment must be 'prod'."
   }
 }
 
@@ -77,15 +77,5 @@ variable "keep_warm_interval_minutes" {
   validation {
     condition     = var.keep_warm_interval_minutes >= 1 && var.keep_warm_interval_minutes <= 60
     error_message = "Keep warm interval must be between 1 and 60 minutes."
-  }
-}
-
-variable "certificate_arn" {
-  description = "Existing ACM certificate ARN for the sourcefuse.com API Gateway custom domain"
-  type        = string
-
-  validation {
-    condition     = var.certificate_arn != ""
-    error_message = "certificate_arn is required."
   }
 }
