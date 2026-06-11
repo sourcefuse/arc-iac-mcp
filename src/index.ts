@@ -40,22 +40,34 @@ app.get('/', (_req, res) => {
 app.all('/mcp', async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
-  // Header Fix for AWS Lambda/API Gateway:
-  // The MCP SDK's StreamableHTTPServerTransport is extremely strict about the Accept header.
-  // We wrap the request and override .get() to ensure the SDK always sees what it needs.
+  // Header Fix for AWS Lambda/API Gateway (Triple-Redundant):
+  // 1. Direct mutation
+  const requiredAccept = 'application/json, text/event-stream';
+  req.headers.accept = requiredAccept;
+  req.headers['accept'] = requiredAccept;
+
+  // 2. Wrap the request object to intercept .get() and .headers access
   const wrappedReq = new Proxy(req, {
     get(target, prop, receiver) {
-      if (prop === 'get') {
+      if (prop === 'headers') {
+        return { ...target.headers, accept: requiredAccept };
+      }
+      if (prop === 'get' || prop === 'header') {
         return (header: string) => {
-          if (header.toLowerCase() === 'accept') {
-            return 'application/json, text/event-stream';
-          }
+          if (header.toLowerCase() === 'accept') return requiredAccept;
           return target.get(header);
         };
       }
-      return Reflect.get(target, prop, receiver);
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
     }
   });
+
+  // Log for CloudWatch diagnostics
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    console.log(`[MCP DEBUG] Req.get('accept'): ${req.get('accept')}`);
+    console.log(`[MCP DEBUG] Headers: ${JSON.stringify(req.headers)}`);
+  }
 
   // Path 1: known session — reuse transport (works for persistent processes like Render)
   if (sessionId && sessions.has(sessionId)) {
