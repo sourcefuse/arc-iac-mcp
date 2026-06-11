@@ -38,28 +38,28 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
-  // Aggressive header fix for AWS Lambda/MCP SDK compatibility
-  const requiredAccept = 'application/json, text/event-stream';
-  req.headers.accept = requiredAccept;
-  req.headers['accept'] = requiredAccept;
-
-  // Manual fallback for tool discovery to bypass transport-level 406 errors on Lambda
-  if (req.method === 'POST' && !Array.isArray(req.body) && req.body?.method === 'tools/list') {
-    const server = createServer();
-    const anyServer = server as any;
-    const tools = anyServer._tools ? Array.from(anyServer._tools.values()) : [];
-    return res.json({
-      jsonrpc: "2.0",
-      id: req.body.id || 1,
-      result: { tools }
-    });
-  }
-
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+  // Header Fix for AWS Lambda/API Gateway:
+  // The MCP SDK's StreamableHTTPServerTransport is extremely strict about the Accept header.
+  // We wrap the request and override .get() to ensure the SDK always sees what it needs.
+  const wrappedReq = new Proxy(req, {
+    get(target, prop, receiver) {
+      if (prop === 'get') {
+        return (header: string) => {
+          if (header.toLowerCase() === 'accept') {
+            return 'application/json, text/event-stream';
+          }
+          return target.get(header);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    }
+  });
 
   // Path 1: known session — reuse transport (works for persistent processes like Render)
   if (sessionId && sessions.has(sessionId)) {
-    await sessions.get(sessionId)!.transport.handleRequest(req, res, req.body);
+    await sessions.get(sessionId)!.transport.handleRequest(wrappedReq as any, res, req.body);
     return;
   }
 
@@ -82,7 +82,7 @@ app.all('/mcp', async (req, res) => {
       }
     };
     await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    await transport.handleRequest(wrappedReq as any, res, req.body);
   } else {
     // Path 3: stateless fallback — no session ID or session expired (common on serverless).
     // The SDK's transport guards tool calls behind _initialized (set only after an initialize
@@ -101,28 +101,7 @@ app.all('/mcp', async (req, res) => {
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
     await server.connect(transport);
-
-    if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
-      console.log(`[MCP DEBUG] Bypassing transport check for method: ${!Array.isArray(body) ? body?.method : 'batch'}`);
-    }
-
-    await transport.handleRequest(req, res, req.body).catch(err => {
-      console.error('[MCP TRANSPORT ERROR]', err);
-      // Final fallback: manually return result if transport fails with 406
-      if (!Array.isArray(body) && body?.method === 'tools/list') {
-        const anyServer = server as any;
-        const tools = anyServer.getTools ? anyServer.getTools() :
-          (anyServer._tools ? Array.from(anyServer._tools.values()) : []);
-
-        res.status(200).json({
-          jsonrpc: "2.0",
-          id: (body as any).id || 1,
-          result: { tools }
-        });
-      } else {
-        throw err;
-      }
-    });
+    await transport.handleRequest(wrappedReq as any, res, req.body);
   }
 });
 
