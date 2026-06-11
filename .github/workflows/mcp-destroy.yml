@@ -1,7 +1,9 @@
 name: Destroy MCP Server
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - feat/arc-mcp
 
 permissions:
   id-token: write
