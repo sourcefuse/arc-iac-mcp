@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI assistants direct access to [SourceFuse ARC](https://registry.terraform.io/namespaces/sourcefuse) Terraform modules. Browse, search, scaffold, compare, and security-scan any of the 56 ARC modules — all from natural language.
 
-**Live endpoint:** `https://mcp-theta-silk.vercel.app/mcp`
+**Live endpoint:** `https://arc-iac-mcp.arc-poc.link/mcp`
 
 ---
 
@@ -16,7 +16,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://mcp-theta-silk.vercel.app/mcp"
+      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
     }
   }
 }
@@ -27,7 +27,7 @@ Restart Claude Desktop.
 ### Claude Code CLI
 
 ```bash
-claude mcp add arc-iac --transport http https://mcp-theta-silk.vercel.app/mcp
+claude mcp add arc-iac --transport http https://arc-iac-mcp.arc-poc.link/mcp
 ```
 
 Or add to your project's `.mcp.json`:
@@ -37,53 +37,16 @@ Or add to your project's `.mcp.json`:
   "mcpServers": {
     "arc-iac": {
       "type": "http",
-      "url": "https://mcp-theta-silk.vercel.app/mcp"
+      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
     }
   }
 }
 ```
 
-### Kiro
+### MCP Inspector (Browser-based testing)
 
-**User-level** (`~/.kiro/settings/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "arc-iac": {
-      "url": "https://mcp-theta-silk.vercel.app/mcp",
-      "autoApprove": ["*"],
-      "disabled": false
-    }
-  }
-}
-```
-
-**Project-level** (`.kiro/settings/mcp.json` in your repo — shared with team automatically):
-
-```json
-{
-  "mcpServers": {
-    "arc-iac": {
-      "url": "https://mcp-theta-silk.vercel.app/mcp",
-      "autoApprove": ["*"]
-    }
-  }
-}
-```
-
-### Cursor / Windsurf
-
-`.cursor/mcp.json` or `.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "arc-iac": {
-      "url": "https://mcp-theta-silk.vercel.app/mcp"
-    }
-  }
-}
+```bash
+npx @modelcontextprotocol/inspector --url https://arc-iac-mcp.arc-poc.link/mcp
 ```
 
 ---
@@ -353,74 +316,78 @@ Calls `arc_compare_modules`, returns a structured diff of inputs/outputs/resourc
 ## Architecture
 
 ```
-AI Client (Claude Desktop / Claude Code / Kiro / Cursor)
+AI Client (Claude Desktop / Claude Code / Cursor)
         │
-        │  JSON-RPC over HTTPS  (MCP Streamable HTTP)
+        │  JSON-RPC over HTTPS (Manual Bypass + SDK Fallback)
         ▼
-ARC IaC MCP Server  —  Node.js + Express  —  Vercel (serverless)
-  ├── Path 1: known mcp-session-id  → reuse existing transport
-  ├── Path 2: initialize request    → create session, return session ID
-  └── Path 3: no session (default)  → stateless bypass, works on Vercel
+ARC IaC MCP Server (Express)
+        │
+    AWS Lambda  <───  API Gateway  <───  Route 53
         │
         ├── registry.terraform.io/v1   (module metadata, inputs, outputs)
-        │     namespace: sourcefuse
         │
-        └── arc-iac-scan-service       (Google Cloud Run)
-              tfsec static analysis
+        └── arc-iac-scan-service       (Cloud Run - tfsec analysis)
 ```
 
-**Transport:** MCP Streamable HTTP with three-path session handling — works correctly on both persistent processes and Vercel serverless functions.
-
-**Data source:** All module data is fetched live from the public Terraform Registry. No database, no stale cache.
+**Transport:** Lightweight MCP execution engine via AWS Lambda. Uses a manual bypass for discovery and tool calls to ensure compatibility with API Gateway header policies.
 
 ---
 
-## Self-Hosting
+## Self-Hosting (AWS Lambda)
 
-### Vercel (recommended)
+This repository is optimized for deployment to AWS using Terraform and GitHub Actions.
 
-```bash
-git clone https://github.com/urbanlotusai/arc-iac-mcp
-cd arc-iac-mcp
-npm install && npm run build
-npx vercel --prod
-```
-
-Your endpoint: `https://<your-project>.vercel.app/mcp`
-
-### Any Node.js host
-
-```bash
-git clone https://github.com/urbanlotusai/arc-iac-mcp
-cd arc-iac-mcp
-npm install && npm run build
-PORT=3000 node dist/index.js
-```
-
-### AWS Lambda + API Gateway
-
-This server is ready for deployment to AWS using the provided Terraform configuration and GitHub Actions workflow.
-
-#### Prerequisites (GitHub Secrets & Variables)
-
-Configure these in your repository settings:
+### 1. Prerequisites (GitHub Variables)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `GH_ACTION_ROLE_ARN` | V | The **Full ARN** of your GitHub Actions OIDC Role |
-| `AWS_REGION` | V | Shared AWS Region (e.g., `us-east-1`) |
+| `GH_ACTION_ROLE_ARN` | V | Full ARN of the OIDC IAM Role |
+| `AWS_REGION` | V | `us-east-1` |
+| `AWS_ACCOUNT_ID_PROD` | V | Your AWS Account ID |
 
-#### GitHub Actions Flow
-Pushing to `develop` or `main` will trigger the `mcp-deploy.yml` workflow, which handles building, packaging, and deploying via Terraform to your `arc-poc.link` hosted zone.
+### 2. Deployment
+Pushing to `main` triggers the `mcp-deploy.yml` workflow, which:
+- Builds and bundles the server using `esbuild`.
+- Deploys the Lambda function and API Gateway via Terraform.
+- Configures the custom domain `arc-iac-mcp.arc-poc.link`.
 
-### Environment Variables
+### 3. Monitoring
+Logs are available in CloudWatch under the group `/aws/lambda/arc-prod-iac-mcp`.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | *(unset — stdio mode)* | Set to start HTTP server. Not needed on Vercel. |
-| `SCAN_SERVICE_URL` | `https://arc-iac-scan-service-...run.app` | Override the tfsec scan service URL |
+---
 
-When `PORT` is unset and not running on Vercel, the server starts in **stdio mode** for local Claude Desktop use.
+## Local Development
+
+```bash
+git clone https://github.com/urbanlotusai/arc-iac-mcp
+cd arc-iac-mcp
+npm install
+
+# Build and Run
+npm run build
+PORT=3000 node dist/index.js
+```
+
+Test via curl:
+
+```bash
+curl -X POST https://arc-iac-mcp.arc-poc.link/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Runtime | Node.js 18 |
+| Infrastructure | AWS Lambda, API Gateway, Route 53 |
+| Registry | Terraform Registry API |
+| Security | tfsec via Google Cloud Run |
+| Automation | Terraform, GitHub Actions (OIDC) |
 
 ---
 
