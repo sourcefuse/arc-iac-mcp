@@ -1,8 +1,8 @@
 locals {
   env_config = {
     prod = {
-      custom_domain_name = "arc-iac-mcp.sourcef.us"
-      cors_allow_origins = ["https://arc-iac-mcp.sourcef.us"]
+      custom_domain_name = "arc-iac-mcp.arc-poc.link"
+      cors_allow_origins = ["https://arc-iac-mcp.arc-poc.link"]
       log_retention_days = 90
       lambda_memory_size = 1024
       enable_xray        = true
