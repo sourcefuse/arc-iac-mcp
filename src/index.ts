@@ -16,18 +16,8 @@ function createServer(): McpServer {
 
 // Build the Express app — used for HTTP (Render/local) and Vercel (serverless) modes.
 const app = express();
+app.use(cors());
 app.use(express.json());
-
-// Deployment diagnostics and header fix for AWS Lambda
-app.use((req, _res, next) => {
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    console.log(`[DEBUG] Method: ${req.method} Path: ${req.path}`);
-    console.log(`[DEBUG] Incoming Headers: ${JSON.stringify(req.headers)}`);
-    // Force the Accept header to satisfy the MCP SDK's strict check
-    req.headers.accept = 'application/json, text/event-stream';
-  }
-  next();
-});
 
 // Session store — keeps server+transport alive across multiple HTTP requests per client.
 // On serverless (Vercel) sessions are per-invocation; stateless fallback handles that.
@@ -48,6 +38,16 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
+  // Aggressive header fix: some environments (like API Gateway) might strip or alter the Accept header.
+  // The MCP SDK's StreamableHTTPServerTransport is extremely strict about this.
+  const requiredAccept = 'application/json, text/event-stream';
+  req.headers.accept = requiredAccept;
+  req.headers['accept'] = requiredAccept;
+
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    console.log(`[MCP DEBUG] Headers reaching /mcp: ${JSON.stringify(req.headers)}`);
+  }
+
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   // Path 1: known session — reuse transport (works for persistent processes like Render)
@@ -85,10 +85,37 @@ app.all('/mcp', async (req, res) => {
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (transport as any)._webStandardTransport._initialized = true;
+    // Bypassing strict SDK checks for AWS Lambda
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    (transport as any)._initialized = true;
+    if ((transport as any)._webStandardTransport) {
+      (transport as any)._webStandardTransport._initialized = true;
+    }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
     await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+
+    if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      console.log(`[MCP DEBUG] Bypassing transport check for method: ${!Array.isArray(body) ? body?.method : 'batch'}`);
+    }
+
+    await transport.handleRequest(req, res, req.body).catch(err => {
+      console.error('[MCP TRANSPORT ERROR]', err);
+      // Final fallback: manually return result if transport fails with 406
+      if (!Array.isArray(body) && body?.method === 'tools/list') {
+        const anyServer = server as any;
+        const tools = anyServer.getTools ? anyServer.getTools() :
+          (anyServer._tools ? Array.from(anyServer._tools.values()) : []);
+
+        res.status(200).json({
+          jsonrpc: "2.0",
+          id: (body as any).id || 1,
+          result: { tools }
+        });
+      } else {
+        throw err;
+      }
+    });
   }
 });
 
