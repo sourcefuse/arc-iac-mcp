@@ -38,14 +38,21 @@ app.get('/', (_req, res) => {
 });
 
 app.all('/mcp', async (req, res) => {
-  // Aggressive header fix: some environments (like API Gateway) might strip or alter the Accept header.
-  // The MCP SDK's StreamableHTTPServerTransport is extremely strict about this.
+  // Aggressive header fix for AWS Lambda/MCP SDK compatibility
   const requiredAccept = 'application/json, text/event-stream';
   req.headers.accept = requiredAccept;
   req.headers['accept'] = requiredAccept;
 
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    console.log(`[MCP DEBUG] Headers reaching /mcp: ${JSON.stringify(req.headers)}`);
+  // Manual fallback for tool discovery to bypass transport-level 406 errors on Lambda
+  if (req.method === 'POST' && !Array.isArray(req.body) && req.body?.method === 'tools/list') {
+    const server = createServer();
+    const anyServer = server as any;
+    const tools = anyServer._tools ? Array.from(anyServer._tools.values()) : [];
+    return res.json({
+      jsonrpc: "2.0",
+      id: req.body.id || 1,
+      result: { tools }
+    });
   }
 
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
