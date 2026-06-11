@@ -137,7 +137,7 @@ output "kiro_config" {
 
 output "curl_test_command" {
   description = "Curl command to test the MCP endpoint"
-  value       = "curl -X POST ${local.mcp_endpoint} -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
+  value       = "curl -X POST ${local.mcp_endpoint} -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
 }
 
 output "logs_command" {
