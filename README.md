@@ -407,8 +407,7 @@ Configure these in your repository settings:
 
 | Name | Type | Description |
 |------|------|-------------|
-| `AWS_ACCOUNT_ID_PROD` | S | AWS Account ID for Production |
-| `GH_ACTION_ROLE_NAME` | V | IAM Role name for GitHub Actions OIDC |
+| `GH_ACTION_ROLE_ARN` | V | The **Full ARN** of your GitHub Actions OIDC Role |
 | `AWS_REGION` | V | Shared AWS Region (e.g., `us-east-1`) |
 
 #### GitHub Actions Flow
