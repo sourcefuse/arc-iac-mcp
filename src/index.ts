@@ -1,10 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { registerTools } from './tools.js';
 import { registerResources } from './resources.js';
+import serverless from 'serverless-http';
 
 function createServer(): McpServer {
   const server = new McpServer({ name: 'arc-iac', version: '1.0.0' });
@@ -31,25 +31,73 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Stateless mode: fresh server+transport per request — works on Lambda/serverless
-app.post('/mcp', async (req, res) => {
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+async function handleMcp(req: Request, res: Response) {
   const server = createServer();
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
-  res.on('finish', () => server.close());
-});
+  const anyServer = server as any;
+  const body = req.body as any;
 
-app.get('/mcp', async (req, res) => {
-  res.status(405).json({ error: 'SSE not supported in stateless mode' });
-});
+  const wantsSSE = (req.headers.accept || '').includes('text/event-stream');
 
-app.delete('/mcp', async (_req, res) => {
-  res.status(200).end();
-});
+  const send = (data: any, status = 200) => {
+    if (wantsSSE) {
+      res.status(status)
+        .setHeader('Content-Type', 'text/event-stream')
+        .setHeader('Cache-Control', 'no-cache')
+        .write(`event: message\ndata: ${JSON.stringify(data)}\n\n`);
+      res.end();
+    } else {
+      res.status(status).json(data);
+    }
+  };
 
-// Exported for Vercel
-import serverless from 'serverless-http';
+  if (req.method === 'POST') {
+    if (body?.method === 'initialize') {
+      return send({
+        jsonrpc: '2.0', id: body.id ?? 1,
+        result: {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: {}, resources: {} },
+          serverInfo: { name: 'arc-iac', version: '1.0.0' },
+        },
+      });
+    }
+
+    if (body?.method === 'notifications/initialized') {
+      return res.status(200).end();
+    }
+
+    if (body?.method === 'tools/list') {
+      const tools = Object.entries(anyServer._registeredTools || {}).map(([name, t]: [string, any]) => ({
+        name,
+        description: t.description,
+        inputSchema: t.inputSchema?.schema || t.inputSchema || { type: 'object', properties: {} },
+      }));
+      return send({ jsonrpc: '2.0', id: body.id ?? 1, result: { tools } });
+    }
+
+    if (body?.method === 'tools/call') {
+      const tool = anyServer._registeredTools?.[body.params?.name];
+      if (!tool) {
+        return send({ jsonrpc: '2.0', id: body.id ?? 1, error: { code: -32601, message: `Tool not found: ${body.params?.name}` } }, 404);
+      }
+      try {
+        const result = await tool.handler(body.params?.arguments || {}, {});
+        return send({ jsonrpc: '2.0', id: body.id ?? 1, result });
+      } catch (err: any) {
+        return send({ jsonrpc: '2.0', id: body.id ?? 1, error: { code: -32603, message: err.message } }, 500);
+      }
+    }
+
+    if (body?.method === 'resources/list') {
+      return send({ jsonrpc: '2.0', id: body.id ?? 1, result: { resources: [] } });
+    }
+  }
+
+  return res.status(200).end();
+}
+
+app.all('/mcp', handleMcp);
+
 export const handler = serverless(app);
 export default app;
 
@@ -58,7 +106,6 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : undefined;
 if (port && !process.env.VERCEL) {
   app.listen(port, () => {
     process.stderr.write(`arc-iac MCP server running on port ${port}\n`);
-    process.stderr.write(`MCP endpoint: http://localhost:${port}/mcp\n`);
   });
 } else if (!port && !process.env.VERCEL) {
   const server = createServer();
