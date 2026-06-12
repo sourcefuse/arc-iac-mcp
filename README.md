@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI assistants direct access to [SourceFuse ARC](https://registry.terraform.io/namespaces/sourcefuse) Terraform modules. Browse, search, scaffold, compare, and security-scan any of the 56 ARC modules — all from natural language.
 
-**Live endpoint:** `https://arc-iac-mcp.arc-poc.link/mcp`
+**Live endpoint:** `https://arc-iac-mcp.sourcef.us/mcp`
 
 ---
 
@@ -16,7 +16,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
+      "url": "https://arc-iac-mcp.sourcef.us/mcp"
     }
   }
 }
@@ -27,7 +27,7 @@ Restart Claude Desktop.
 ### Claude Code CLI
 
 ```bash
-claude mcp add arc-iac --transport http https://arc-iac-mcp.arc-poc.link/mcp
+claude mcp add arc-iac --transport http https://arc-iac-mcp.sourcef.us/mcp
 ```
 
 Or add to your project's `.mcp.json`:
@@ -37,7 +37,7 @@ Or add to your project's `.mcp.json`:
   "mcpServers": {
     "arc-iac": {
       "type": "http",
-      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
+      "url": "https://arc-iac-mcp.sourcef.us/mcp"
     }
   }
 }
@@ -51,7 +51,7 @@ Or add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://arc-iac-mcp.arc-poc.link/mcp",
+      "url": "https://arc-iac-mcp.sourcef.us/mcp",
       "autoApprove": ["*"],
       "disabled": false
     }
@@ -65,7 +65,7 @@ Or add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://arc-iac-mcp.arc-poc.link/mcp",
+      "url": "https://arc-iac-mcp.sourcef.us/mcp",
       "autoApprove": ["*"]
     }
   }
@@ -80,7 +80,7 @@ Or add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://arc-iac-mcp.arc-poc.link/mcp"
+      "url": "https://arc-iac-mcp.sourcef.us/mcp"
     }
   }
 }
@@ -89,7 +89,7 @@ Or add to your project's `.mcp.json`:
 ### MCP Inspector (Browser-based testing)
 
 ```bash
-npx @modelcontextprotocol/inspector --url https://arc-iac-mcp.arc-poc.link/mcp
+npx @modelcontextprotocol/inspector --url https://arc-iac-mcp.sourcef.us/mcp
 ```
 
 ---
@@ -392,7 +392,7 @@ This repository is optimized for deployment to AWS using Terraform and GitHub Ac
 Pushing to `main` triggers the `mcp-deploy.yml` workflow, which:
 - Builds and bundles the server using `esbuild`.
 - Deploys the Lambda function and API Gateway via Terraform.
-- Configures the custom domain `arc-iac-mcp.arc-poc.link`.
+- Configures the custom domain `arc-iac-mcp.sourcef.us`.
 
 ### 3. Monitoring
 Logs are available in CloudWatch under the group `/aws/lambda/arc-prod-iac-mcp`.
@@ -414,7 +414,7 @@ PORT=3000 node dist/index.js
 Test via curl:
 
 ```bash
-curl -X POST https://arc-iac-mcp.arc-poc.link/mcp \
+curl -X POST https://arc-iac-mcp.sourcef.us/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'

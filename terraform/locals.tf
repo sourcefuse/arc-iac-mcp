@@ -1,8 +1,8 @@
 locals {
   env_config = {
     prod = {
-      custom_domain_name = "arc-iac-mcp.arc-poc.link"
-      cors_allow_origins = ["https://arc-iac-mcp.arc-poc.link"]
+      custom_domain_name = "arc-iac-mcp.sourcef.us"
+      cors_allow_origins = ["https://arc-iac-mcp.sourcef.us"]
       log_retention_days = 90
       lambda_memory_size = 1024
       enable_xray        = true
@@ -16,7 +16,7 @@ locals {
 
   config = local.env_config[var.environment]
 
-  hosted_zone_name = "arc-poc.link"
+  hosted_zone_name = "sourcef.us"
   tags = merge(
     {
       Project     = "arc-iac-mcp"
