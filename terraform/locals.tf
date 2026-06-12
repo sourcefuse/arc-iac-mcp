@@ -16,7 +16,7 @@ locals {
 
   config = local.env_config[var.environment]
 
-  hosted_zone_name = "sourcef.us"
+  hosted_zone_name = "arc-iac-mcp.sourcef.us"
   tags = merge(
     {
       Project     = "arc-iac-mcp"
