@@ -42,6 +42,17 @@ app.all('/mcp', async (req, res) => {
   const anyServer = server as any;
   const body = req.body as any;
 
+  // Force Accept header to be correct for ALL requests
+  const requiredAccept = 'application/json, text/event-stream';
+  const oldGet = req.get.bind(req);
+  (req as any).get = (name: string) => {
+    if (name.toLowerCase() === 'accept') return requiredAccept;
+    return (oldGet as any)(name);
+  };
+  (req as any).header = (req as any).get;
+  req.headers.accept = requiredAccept;
+  req.headers['accept'] = requiredAccept;
+
   // EMERGENCY BYPASS: Manual JSON-RPC handling for AWS Lambda
   // This bypasses the SDK's transport entirely to avoid 406 errors.
   if (req.method === 'POST' && !Array.isArray(body)) {
@@ -81,21 +92,28 @@ app.all('/mcp', async (req, res) => {
         });
       }
     }
+
+    // 3. Initialize - also handle directly
+    if (body?.method === 'initialize') {
+      return res.json({
+        jsonrpc: "2.0",
+        id: body.id || 1,
+        result: {
+          protocolVersion: "2024-11-05",
+          capabilities: {
+            tools: {},
+            resources: {}
+          },
+          serverInfo: {
+            name: "arc-iac",
+            version: "1.0.0"
+          }
+        }
+      });
+    }
   }
 
-  // Fallback for everything else (like initialize)
-  const requiredAccept = 'application/json, text/event-stream';
-
-  // Directly overwrite the methods on the req object for maximum effectiveness
-  const oldGet = req.get.bind(req);
-  (req as any).get = (name: string) => {
-    if (name.toLowerCase() === 'accept') return requiredAccept;
-    return (oldGet as any)(name);
-  };
-  (req as any).header = (req as any).get;
-  req.headers.accept = requiredAccept;
-  req.headers['accept'] = requiredAccept;
-
+  // Fallback: Use SDK transport for any other methods (resources, etc.)
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   // Path 1: known session — reuse transport
