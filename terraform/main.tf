@@ -21,9 +21,9 @@ locals {
   api_name            = "${local.function_name}-api"
   mcp_endpoint        = "https://${local.config.custom_domain_name}/mcp"
   api_gateway_domain = {
-    create              = true
+    create              = false
     domain              = local.config.custom_domain_name
-    route53_root_domain = null
+    route53_root_domain = local.hosted_zone_name
     certificate_arn     = data.aws_acm_certificate.issued.arn
   }
 
@@ -221,4 +221,25 @@ module "api_gateway" {
 data "aws_acm_certificate" "issued" {
   domain   = "arc-iac-mcp.sourcef.us"
   statuses = ["ISSUED"]
+}
+
+################################################################################
+# Custom Domain (Route53 managed in Account A — DNS record created manually)
+################################################################################
+
+resource "aws_api_gateway_domain_name" "custom" {
+  domain_name              = local.config.custom_domain_name
+  regional_certificate_arn = data.aws_acm_certificate.issued.arn
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+
+  tags = local.tags
+}
+
+resource "aws_api_gateway_base_path_mapping" "custom" {
+  api_id      = module.api_gateway.id
+  stage_name  = var.environment
+  domain_name = aws_api_gateway_domain_name.custom.domain_name
 }
