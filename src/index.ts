@@ -44,7 +44,7 @@ app.all('/mcp', async (req, res) => {
 
   // EMERGENCY BYPASS: Manual JSON-RPC handling for stateless tool operations
   // This provides fast stateless responses for tools/list and tools/call
-  if (req.method === 'POST' && !Array.isArray(body) && body?.method !== 'initialize') {
+  if (req.method === 'POST' && !Array.isArray(body)) {
     // 1. Tool Listing
     if (body?.method === 'tools/list') {
       const registeredTools = anyServer._registeredTools || {};
