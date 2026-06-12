@@ -89,9 +89,14 @@ async function handleMcp(req: Request, res: Response) {
     }
 
     if (method === 'tools/call') {
+      const args = body.params?.arguments ?? {};
+      // normalize common LLM aliases → canonical argument names
+      const normalized = { ...args };
+      if (normalized.module_name && !normalized.name) normalized.name = normalized.module_name;
+      if (normalized.module && !normalized.name) normalized.name = normalized.module;
       const result = await client.callTool({
         name: body.params?.name,
-        arguments: body.params?.arguments ?? {},
+        arguments: normalized,
       });
       await server.close();
       return send({ jsonrpc: '2.0', id: body.id ?? 1, result });
