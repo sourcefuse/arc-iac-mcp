@@ -1,10 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
 import cors from 'cors';
-import { randomUUID } from 'crypto';
 import { registerTools } from './tools.js';
 import { registerResources } from './resources.js';
 
@@ -18,9 +16,6 @@ function createServer(): McpServer {
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// Session store for stateful connections (persistent HTTP mode)
-const sessions = new Map<string, { server: McpServer; transport: StreamableHTTPServerTransport }>();
 
 app.get('/', (_req, res) => {
   res.json({
@@ -36,61 +31,21 @@ app.get('/', (_req, res) => {
   });
 });
 
+// Stateless mode: fresh server+transport per request — works on Lambda/serverless
 app.post('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-  // Reuse existing session if available
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    await transport.handleRequest(req, res, req.body);
-    return;
-  }
-
-  // New session: must start with initialize
-  if (!isInitializeRequest(req.body)) {
-    res.status(400).json({ error: 'Must start session with initialize request' });
-    return;
-  }
-
-  const newSessionId = randomUUID();
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => newSessionId,
-    onsessioninitialized: (id) => {
-      sessions.set(id, { server, transport });
-    },
-  });
-
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const server = createServer();
-
-  transport.onclose = () => {
-    sessions.delete(newSessionId);
-  };
-
   await server.connect(transport);
   await transport.handleRequest(req, res, req.body);
+  res.on('finish', () => server.close());
 });
 
-// SSE stream endpoint for server-sent events (GET)
 app.get('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !sessions.has(sessionId)) {
-    res.status(400).json({ error: 'Invalid or missing session ID' });
-    return;
-  }
-  const { transport } = sessions.get(sessionId)!;
-  await transport.handleRequest(req, res);
+  res.status(405).json({ error: 'SSE not supported in stateless mode' });
 });
 
-// Session cleanup
-app.delete('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    await transport.handleRequest(req, res);
-    sessions.delete(sessionId);
-  } else {
-    res.status(200).end();
-  }
+app.delete('/mcp', async (_req, res) => {
+  res.status(200).end();
 });
 
 // Exported for Vercel
