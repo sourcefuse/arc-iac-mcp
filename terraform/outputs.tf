@@ -38,7 +38,7 @@ output "api_gateway_endpoint" {
 
 output "api_gateway_regional_domain" {
   description = "API Gateway regional domain name — use this to create the CNAME/A-alias record in Route53 (sourcef.us hosted zone in Account A)"
-  value       = module.api_gateway.domain_name
+  value       = module.api_gateway.custom_domain_regional_domain_name
 }
 
 output "mcp_endpoint" {
