@@ -42,10 +42,29 @@ app.all('/mcp', async (req, res) => {
   const anyServer = server as any;
   const body = req.body as any;
 
-  // EMERGENCY BYPASS: Manual JSON-RPC handling for stateless tool operations
-  // This provides fast stateless responses for tools/list and tools/call
+  // STATELESS JSON-RPC HANDLER: Bypass SDK entirely for all methods
+  // This avoids Accept header issues and provides fast responses
   if (req.method === 'POST' && !Array.isArray(body)) {
-    // 1. Tool Listing
+    // 1. Initialize
+    if (body?.method === 'initialize') {
+      return res.json({
+        jsonrpc: "2.0",
+        id: body.id || 1,
+        result: {
+          protocolVersion: "2024-11-05",
+          capabilities: {
+            tools: {},
+            resources: {}
+          },
+          serverInfo: {
+            name: "arc-iac",
+            version: "1.0.0"
+          }
+        }
+      });
+    }
+
+    // 2. Tool Listing
     if (body?.method === 'tools/list') {
       const registeredTools = anyServer._registeredTools || {};
       const tools = Object.entries(registeredTools).map(([name, t]: [string, any]) => ({
@@ -56,13 +75,12 @@ app.all('/mcp', async (req, res) => {
       return res.json({ jsonrpc: "2.0", id: body.id || 1, result: { tools } });
     }
 
-    // 2. Tool Execution
+    // 3. Tool Execution
     if (body?.method === 'tools/call' && body?.params?.name) {
       const toolName = body.params.name;
       const tool = anyServer._registeredTools?.[toolName];
       if (tool) {
         try {
-          // Execute tool directly using its handler
           const result = await tool.handler(body.params.arguments || {}, {});
           return res.json({ jsonrpc: "2.0", id: body.id || 1, result });
         } catch (err: any) {
@@ -81,64 +99,32 @@ app.all('/mcp', async (req, res) => {
         });
       }
     }
-  }
 
-  // For initialize and all other methods, use the SDK transport with session management
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-  // Fix Accept header for SDK transport compatibility
-  const requiredAccept = 'application/json, text/event-stream';
-  const oldGet = req.get.bind(req);
-  (req as any).get = (name: string) => {
-    if (name.toLowerCase() === 'accept') return requiredAccept;
-    return (oldGet as any)(name);
-  };
-  (req as any).header = (req as any).get;
-  req.headers.accept = requiredAccept;
-  req.headers['accept'] = requiredAccept;
-
-  // Path 1: known session — reuse transport
-  if (sessionId && sessions.has(sessionId)) {
-    await sessions.get(sessionId)!.transport.handleRequest(req, res, req.body);
-    return;
-  }
-
-  const isInit = Array.isArray(body)
-    ? body.some((m: any) => m?.method === 'initialize')
-    : body?.method === 'initialize';
-
-  if (isInit) {
-    // Path 2: initialize
-    const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (id: string) => { sessions.set(id, { server, transport }); },
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  } else {
-    // Path 3: stateless fallback
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-    // Bypass state checks
-    (transport as any)._initialized = true;
-    if ((transport as any)._webStandardTransport) {
-      (transport as any)._webStandardTransport._initialized = true;
+    // 4. Resources list (if requested)
+    if (body?.method === 'resources/list') {
+      return res.json({
+        jsonrpc: "2.0",
+        id: body.id || 1,
+        result: { resources: [] }
+      });
     }
 
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    // 5. Notifications/initialized - acknowledge
+    if (body?.method === 'notifications/initialized') {
+      return res.status(200).end();
+    }
   }
+
+  // Fallback: 404 for unsupported methods
+  return res.status(404).json({
+    jsonrpc: "2.0",
+    id: body?.id || null,
+    error: { code: -32601, message: `Method not supported: ${body?.method}` }
+  });
 });
 
-app.delete('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    await transport.close();
-    sessions.delete(sessionId);
-  }
+app.delete('/mcp', async (_req, res) => {
+  // Session cleanup - stateless mode doesn't need this, just acknowledge
   res.status(200).end();
 });
 
