@@ -1,7 +1,13 @@
 name: Destroy MCP Server
 
+# on:
+#   workflow_dispatch:
+
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'feat/*'
 
 permissions:
   id-token: write
