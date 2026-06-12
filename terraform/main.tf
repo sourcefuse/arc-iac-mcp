@@ -198,7 +198,7 @@ module "api_gateway" {
   stage_name             = var.environment
   endpoint_type          = "REGIONAL"
   open_api_json          = local.api_openapi_json
-  enable_cloudwatch_logs = true
+  enable_cloudwatch_logs = false
   xray_tracing_enabled   = local.config.enable_xray
   api_gateway_domain     = local.api_gateway_domain
 
