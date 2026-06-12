@@ -37,13 +37,13 @@ output "api_gateway_endpoint" {
 }
 
 output "api_gateway_regional_domain" {
-  description = "API Gateway regional domain name — share with infra team to create DNS alias in sourcef.us hosted zone"
-  value       = aws_api_gateway_domain_name.custom.regional_domain_name
+  description = "API Gateway regional domain name"
+  value       = module.api_gateway.custom_domain_regional_domain_name
 }
 
 output "api_gateway_regional_zone_id" {
-  description = "API Gateway regional hosted zone ID — needed for Route53 alias record in Account A"
-  value       = aws_api_gateway_domain_name.custom.regional_zone_id
+  description = "API Gateway regional hosted zone ID"
+  value       = module.api_gateway.custom_domain_regional_zone_id
 }
 
 output "mcp_endpoint" {
