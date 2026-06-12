@@ -23,7 +23,7 @@ locals {
   api_gateway_domain = {
     create              = true
     domain              = local.config.custom_domain_name
-    route53_root_domain = local.hosted_zone_name
+    route53_root_domain = null
     certificate_arn     = data.aws_acm_certificate.issued.arn
   }
 

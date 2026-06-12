@@ -36,6 +36,11 @@ output "api_gateway_endpoint" {
   value       = module.api_gateway.invoke_url
 }
 
+output "api_gateway_regional_domain" {
+  description = "API Gateway regional domain name — use this to create the CNAME/A-alias record in Route53 (sourcef.us hosted zone in Account A)"
+  value       = module.api_gateway.domain_name
+}
+
 output "mcp_endpoint" {
   description = "MCP endpoint URL (use this in your MCP client configs)"
   value       = local.mcp_endpoint
