@@ -3,7 +3,7 @@ locals {
     prod = {
       custom_domain_name = "arc-iac-mcp.sourcef.us"
       cors_allow_origins = ["https://arc-iac-mcp.sourcef.us"]
-      log_retention_days = 90
+      log_retention_days = 7
       lambda_memory_size = 1024
       enable_xray        = true
       enable_keep_warm   = true
