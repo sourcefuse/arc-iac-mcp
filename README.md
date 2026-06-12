@@ -1,6 +1,6 @@
 # ARC IaC MCP Server
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI assistants direct access to [SourceFuse ARC](https://registry.terraform.io/namespaces/sourcefuse) Terraform modules. Browse, search, scaffold, compare, and security-scan any of the 56 ARC modules — all from natural language.
+A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI assistants direct access to [SourceFuse ARC](https://registry.terraform.io/namespaces/sourcefuse) Terraform modules. Browse, search, scaffold, compare, and security-scan any of the 58 ARC modules — all from natural language.
 
 **Live endpoint:** `https://arc-iac-mcp.sourcef.us/mcp`
 
