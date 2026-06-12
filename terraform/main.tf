@@ -219,7 +219,6 @@ module "api_gateway" {
 ################################################################################
 
 data "aws_acm_certificate" "issued" {
-  domain   = "*.${local.hosted_zone_name}"
+  domain   = "arc-iac-mcp.sourcef.us"
   statuses = ["ISSUED"]
-  key_types = ["RSA_2048"]
 }
