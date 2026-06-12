@@ -84,6 +84,7 @@ locals {
           }
         }
         options = {
+          security = []
           responses = {
             "204" = {
               description = "CORS preflight response"
