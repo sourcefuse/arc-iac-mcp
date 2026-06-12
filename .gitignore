@@ -5,3 +5,4 @@ dist/
 .DS_Store
 terraform/lambda-deploy/
 terraform/lambda-deployment.zip
+test-mcp.sh

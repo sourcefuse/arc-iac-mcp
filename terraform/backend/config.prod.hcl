@@ -1,4 +1,4 @@
-bucket  = "arc-iac-mcp"
-key     = "arc-iac-mcp/prod/terraform.tfstate"
+bucket  = "arc-iac-mcp-state-bucket"
+key     = "arc-iac-mcp-state-bucket/prod/terraform.tfstate"
 region  = "us-east-1"
 encrypt = true
