@@ -6,6 +6,16 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI
 
 ---
 
+## Overview
+
+ARC IaC MCP Server runs as a single **AWS Lambda** function fronted by **API Gateway**. AI clients speak MCP (JSON-RPC over HTTPS); the Lambda fetches module metadata from the public **Terraform Registry** and delegates HCL security scans to a **tfsec** service on Google Cloud Run.
+
+![ARC IaC MCP Server architecture](docs/architecture.png)
+
+Deployed with **Terraform + GitHub Actions** (OIDC). See [Architecture](#architecture) for transport internals and [Self-Hosting](#self-hosting-aws-lambda) to run your own.
+
+---
+
 ## Quick Start
 
 ### Claude Desktop
@@ -102,7 +112,7 @@ All tools use the module **short name** (e.g. `arc-eks`, not `terraform-aws-arc-
 
 ### `arc_list_modules`
 
-Lists all 56 SourceFuse ARC modules with name, description, download count, and latest version.
+Lists all 58 SourceFuse ARC modules with name, description, download count, and latest version.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -193,7 +203,7 @@ Scans the entire ARC catalog and returns all modules that provision a specific A
 |-----------|------|----------|-------------|
 | `resource` | `string` | Yes | Terraform resource type e.g. `aws_eks_cluster`, `aws_s3_bucket` |
 
-> This tool fetches all 56 modules in parallel and may take 10–20 seconds.
+> This tool fetches all 58 modules in parallel and may take 10–20 seconds.
 
 **Example prompt:** *"Which ARC modules create an aws_s3_bucket?"*
 
@@ -358,21 +368,13 @@ Calls `arc_compare_modules`, returns a structured diff of inputs/outputs/resourc
 
 ## Architecture
 
-```
-AI Client (Claude Desktop / Claude Code / Cursor)
-        │
-        │  JSON-RPC over HTTPS (Manual Bypass + SDK Fallback)
-        ▼
-ARC IaC MCP Server (Express)
-        │
-    AWS Lambda  <───  API Gateway  <───  Route 53
-        │
-        ├── registry.terraform.io/v1   (module metadata, inputs, outputs)
-        │
-        └── arc-iac-scan-service       (Cloud Run - tfsec analysis)
-```
+The end-to-end request flow is shown in the [Overview](#overview) diagram above. Implementation details:
 
-**Transport:** Lightweight MCP execution engine via AWS Lambda. Uses a manual bypass for discovery and tool calls to ensure compatibility with API Gateway header policies.
+**Transport:** A lightweight MCP execution engine runs inside AWS Lambda (Express wrapped by `serverless-http`). `initialize` and `notifications/initialized` are handled manually, while `tools/list` and `tools/call` are routed through the MCP SDK via an in-memory client↔server bridge. This manual bypass keeps discovery and tool calls compatible with API Gateway header policies.
+
+**Downstream services:**
+- `registry.terraform.io/v1` — module metadata, inputs, outputs, and versions
+- `arc-iac-scan-service` (Google Cloud Run) — tfsec HCL security analysis
 
 ---
 
@@ -406,46 +408,15 @@ git clone https://github.com/sourcefuse/arc-iac-mcp.git
 cd arc-iac-mcp
 npm install
 
-# Build and Run
+# Dev mode — no build step needed
+PORT=3000 npm run dev
+
+# Or build and run the compiled output
 npm run build
 PORT=3000 node dist/index.js
 ```
 
-Test via curl:
-
-```bash
-curl -X POST https://arc-iac-mcp.sourcef.us/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 18 |
-| Infrastructure | AWS Lambda, API Gateway, Route 53 |
-| Registry | Terraform Registry API |
-| Security | tfsec via Google Cloud Run |
-| Automation | Terraform, GitHub Actions (OIDC) |
-
----
-
-## Local Development
-
-```bash
-git clone https://github.com/sourcefuse/arc-iac-mcp.git
-cd arc-iac-mcp
-npm install
-
-# Dev mode — no build step needed
-PORT=3000 npm run dev
-```
-
-Test via curl:
+Test against your local server:
 
 ```bash
 curl -s -X POST http://localhost:3000/mcp \
@@ -460,6 +431,15 @@ curl -s -X POST http://localhost:3000/mcp \
       "arguments": { "name": "arc-db", "instance_name": "aurora_postgres" }
     }
   }'
+```
+
+Or test the live endpoint:
+
+```bash
+curl -X POST https://arc-iac-mcp.sourcef.us/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
 Test with MCP Inspector:
@@ -478,7 +458,7 @@ Opens a browser UI at `http://localhost:5173` — invoke any tool and inspect ra
 The client may be sending `tools/list` before `initialize`. Ensure your MCP client supports Streamable HTTP. Claude Desktop, Claude Code CLI, and Kiro all work.
 
 **`arc_find_by_resource` is slow**
-Expected — it fetches all 56 modules in parallel from the Terraform Registry. Typical time: 10–20 seconds.
+Expected — it fetches all 58 modules in parallel from the Terraform Registry. Typical time: 10–20 seconds.
 
 **`arc_scan_hcl` / `arc_validate_module` timeout on first call**
 The tfsec scan service (Google Cloud Run) may cold-start in 30–60 seconds after inactivity. Retry once — subsequent calls are fast.
@@ -504,11 +484,12 @@ All tools accept the **short name** without prefix or provider suffix:
 | Runtime | Node.js 18+ |
 | Language | TypeScript 5 |
 | MCP SDK | `@modelcontextprotocol/sdk` v1.29 |
-| HTTP | Express 4 |
+| HTTP | Express 4 (via `serverless-http`) |
 | Validation | Zod 4 |
 | Data source | Terraform Registry API (public) |
 | Security scan | tfsec via Google Cloud Run |
-| Hosting | Vercel |
+| Infrastructure | AWS Lambda, API Gateway, Route 53 |
+| Automation | Terraform, GitHub Actions (OIDC) |
 
 ---
 
