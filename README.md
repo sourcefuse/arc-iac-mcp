@@ -402,7 +402,7 @@ Logs are available in CloudWatch under the group `/aws/lambda/arc-prod-iac-mcp`.
 ## Local Development
 
 ```bash
-git clone https://github.com/urbanlotusai/arc-iac-mcp
+git clone https://github.com/sourcefuse/arc-iac-mcp.git
 cd arc-iac-mcp
 npm install
 
@@ -437,7 +437,7 @@ curl -X POST https://arc-iac-mcp.sourcef.us/mcp \
 ## Local Development
 
 ```bash
-git clone https://github.com/urbanlotusai/arc-iac-mcp
+git clone https://github.com/sourcefuse/arc-iac-mcp.git
 cd arc-iac-mcp
 npm install
 
@@ -514,7 +514,7 @@ All tools accept the **short name** without prefix or provider suffix:
 
 ## Contributing
 
-1. Fork `urbanlotusai/arc-iac-mcp`
+1. Fork `sourcefuse/arc-iac-mcp`
 2. `npm install && PORT=3000 npm run dev`
 3. Add tools in `src/tools.ts` following the existing pattern
 4. `npm run build` — must compile clean with no TypeScript errors
