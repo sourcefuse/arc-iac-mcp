@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.local
+.DS_Store
+terraform/lambda-deploy/
+terraform/lambda-deployment.zip
+test-mcp.sh
