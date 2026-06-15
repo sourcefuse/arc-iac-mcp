@@ -246,6 +246,11 @@ module "waf" {
       name            = "AWSManagedRulesCommonRuleSet"
       priority        = 1
       override_action = [{ none = [{}] }]
+      statement = [{
+        managed_rule_group_statement = [{
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+        }]
       }]
       visibility_config = [{
         cloudwatch_metrics_enabled = true
@@ -274,9 +279,9 @@ module "waf" {
 
     # Rule 3 — Rate limiting per IP (DDoS / abuse protection)
     RateLimitRule = {
-      name    = "RateLimitRule"
+      name     = "RateLimitRule"
       priority = 3
-      action  = [{ block = [{}] }]
+      action   = [{ block = [{}] }]
       statement = [{
         rate_based_statement = [{
           limit              = var.waf_rate_limit
