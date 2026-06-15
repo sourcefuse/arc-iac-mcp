@@ -4,16 +4,9 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI
 
 **Live endpoint:** `https://arc-iac-mcp.sourcef.us/mcp`
 
----
-
 ## Overview
 
-ARC IaC MCP Server runs as a single **AWS Lambda** function fronted by **API Gateway**. AI clients speak MCP (JSON-RPC over HTTPS); the Lambda fetches module metadata from the public **Terraform Registry** and delegates HCL security scans to a **tfsec** service on Google Cloud Run.
-
-![ARC IaC MCP Server architecture](docs/architecture.png)
-
-
----
+ARC IaC MCP Server runs as a hosted service. AI clients speak MCP (JSON-RPC over HTTPS); the server fetches module metadata from the public **Terraform Registry** and delegates HCL security scans to a **tfsec** service.
 
 ## Quick Start
 
@@ -61,7 +54,6 @@ Or add to your project's `.mcp.json`:
   "mcpServers": {
     "arc-iac": {
       "url": "https://arc-iac-mcp.sourcef.us/mcp",
-      "autoApprove": ["*"],
       "disabled": false
     }
   }
@@ -74,8 +66,7 @@ Or add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "arc-iac": {
-      "url": "https://arc-iac-mcp.sourcef.us/mcp",
-      "autoApprove": ["*"]
+      "url": "https://arc-iac-mcp.sourcef.us/mcp"
     }
   }
 }
@@ -95,11 +86,16 @@ Or add to your project's `.mcp.json`:
 }
 ```
 
-### MCP Inspector (Browser-based testing)
+## How to Use
 
-```bash
-npx @modelcontextprotocol/inspector --url https://arc-iac-mcp.sourcef.us/mcp
-```
+Once configured, just ask your AI assistant natural language questions about ARC modules. The MCP tools are invoked automatically — no commands to memorize.
+
+**Try these prompts:**
+- *"List all ARC modules sorted by downloads"*
+- *"What inputs does arc-eks require?"*
+- *"Scaffold a production-ready arc-db setup"*
+- *"Compare arc-eks and arc-ecs"*
+- *"Scan this Terraform for security issues: `<paste HCL>`"*
 
 ---
 
@@ -367,29 +363,6 @@ Calls `arc_compare_modules`, returns a structured diff of inputs/outputs/resourc
 
 
 
-## Self-Hosting (AWS Lambda)
-
-This repository is optimized for deployment to AWS using Terraform and GitHub Actions.
-
-### 1. Prerequisites (GitHub Variables)
-
-| Name | Type | Description |
-|------|------|-------------|
-| `GH_ACTION_ROLE_ARN` | V | Full ARN of the OIDC IAM Role |
-| `AWS_REGION` | V | `us-east-1` |
-| `AWS_ACCOUNT_ID_PROD` | V | Your AWS Account ID |
-
-### 2. Deployment
-Pushing to `main` triggers the `mcp-deploy.yml` workflow, which:
-- Builds and bundles the server using `esbuild`.
-- Deploys the Lambda function and API Gateway via Terraform.
-- Configures the custom domain `arc-iac-mcp.sourcef.us`.
-
-### 3. Monitoring
-Logs are available in CloudWatch under the group `/aws/lambda/arc-prod-iac-mcp`.
-
----
-
 ## Local Development
 
 ```bash
@@ -477,8 +450,6 @@ All tools accept the **short name** without prefix or provider suffix:
 | Validation | Zod 4 |
 | Data source | Terraform Registry API (public) |
 | Security scan | tfsec via Google Cloud Run |
-| Infrastructure | AWS Lambda, API Gateway, Route 53 |
-| Automation | Terraform, GitHub Actions (OIDC) |
 
 ---
 
