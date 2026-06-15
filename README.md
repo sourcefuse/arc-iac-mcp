@@ -2,7 +2,11 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI assistants direct access to [SourceFuse ARC](https://registry.terraform.io/namespaces/sourcefuse) Terraform modules. Browse, search, scaffold, compare, and security-scan any of the 58 ARC modules — all from natural language.
 
-**Live endpoint:** `https://arc-iac-mcp.sourcef.us/mcp`
+
+## MCP Server
+
+**Live endpoint:** [https://arc-iac-mcp.sourcef.us/mcp](https://arc-iac-mcp.sourcef.us/mcp)
+
 
 ## Overview
 
@@ -440,18 +444,6 @@ Expected — it fetches all 58 modules in parallel from the Terraform Registry. 
 
 **`arc_scan_hcl` / `arc_validate_module` timeout on first call**
 The tfsec scan service (Google Cloud Run) may cold-start in 30–60 seconds after inactivity. Retry once — subsequent calls are fast.
-
----
-
-## Module Naming
-
-All tools accept the **short name** without prefix or provider suffix:
-
-| ✅ Correct | ❌ Wrong |
-|-----------|---------|
-| `arc-eks` | `terraform-aws-arc-eks` |
-| `arc-network` | `sourcefuse/arc-network/aws` |
-| `arc-db` | `arc_db` |
 
 ---
 
