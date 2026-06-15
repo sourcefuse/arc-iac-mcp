@@ -1,11 +1,5 @@
 # Security Policy
 
-## Supported Versions
-
-| Version | Supported |
-|---------|-----------|
-| Latest `main` branch | ✅ Yes |
-| Older commits | ❌ No — please update |
 
 ## Reporting a Vulnerability
 
@@ -17,7 +11,6 @@ Instead, report it privately by emailing the maintainers with:
 - Potential impact
 - Suggested fix (if any)
 
-We will acknowledge receipt within 48 hours and provide a timeline for resolution.
 
 ## Security Notes
 
