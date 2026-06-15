@@ -154,3 +154,22 @@ output "logs_command" {
   description = "AWS CLI command to view logs"
   value       = "aws logs tail ${module.lambda.cloudwatch_log_group_name} --follow --region ${var.region}"
 }
+
+################################################################################
+# WAF Outputs
+################################################################################
+
+output "waf_web_acl_arn" {
+  description = "ARN of the WAF Web ACL protecting the API Gateway"
+  value       = module.waf.arn
+}
+
+output "waf_web_acl_id" {
+  description = "ID of the WAF Web ACL"
+  value       = module.waf.id
+}
+
+output "waf_capacity" {
+  description = "Web ACL capacity units (WCUs) used by the WAF"
+  value       = module.waf.capacity
+}

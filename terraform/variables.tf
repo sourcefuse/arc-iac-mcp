@@ -79,3 +79,29 @@ variable "keep_warm_interval_minutes" {
     error_message = "Keep warm interval must be between 1 and 60 minutes."
   }
 }
+
+################################################################################
+# WAF Configuration
+################################################################################
+
+variable "waf_default_action" {
+  description = "Default action for WAF Web ACL when no rules match. Options: 'allow' or 'block'"
+  type        = string
+  default     = "allow"
+
+  validation {
+    condition     = contains(["allow", "block"], var.waf_default_action)
+    error_message = "WAF default action must be 'allow' or 'block'."
+  }
+}
+
+variable "waf_rate_limit" {
+  description = "Maximum number of requests per 5 minutes per IP before WAF blocks them"
+  type        = number
+  default     = 1000
+
+  validation {
+    condition     = var.waf_rate_limit >= 100
+    error_message = "WAF rate limit must be at least 100 requests."
+  }
+}

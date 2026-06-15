@@ -215,6 +215,88 @@ module "api_gateway" {
 }
 
 ################################################################################
+# ARC WAF Module — protects the API Gateway stage
+################################################################################
+
+module "waf" {
+  source  = "sourcefuse/arc-waf/aws"
+  version = "1.0.7"
+
+  web_acl_name         = "${local.function_name}-waf"
+  web_acl_description  = "WAF Web ACL for ARC IaC MCP API Gateway"
+  web_acl_scope        = "REGIONAL"
+  web_acl_default_action = var.waf_default_action
+
+  web_acl_visibility_config = {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${local.function_name}-waf"
+    sampled_requests_enabled   = true
+  }
+
+  # Associate with the API Gateway stage ARN
+  # Format: arn:aws:apigateway:{region}::/restapis/{api-id}/stages/{stage-name}
+  association_resource_arns = [
+    "arn:aws:apigateway:${var.region}::/restapis/${module.api_gateway.id}/stages/${module.api_gateway.stage_name}"
+  ]
+
+  web_acl_rules = [
+    # Rule 1 — AWS Managed Common Rule Set (known attack patterns)
+    {
+      name     = "AWSManagedRulesCommonRuleSet"
+      priority = 1
+      override_action = { none = {} }
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+        }
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AWSManagedRulesCommonRuleSet"
+        sampled_requests_enabled   = true
+      }
+    },
+    # Rule 2 — AWS Known Bad Inputs
+    {
+      name     = "AWSManagedRulesKnownBadInputsRuleSet"
+      priority = 2
+      override_action = { none = {} }
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesKnownBadInputsRuleSet"
+          vendor_name = "AWS"
+        }
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AWSManagedRulesKnownBadInputsRuleSet"
+        sampled_requests_enabled   = true
+      }
+    },
+    # Rule 3 — Rate limiting (DDoS / abuse protection)
+    {
+      name     = "RateLimitRule"
+      priority = 3
+      action   = { block = {} }
+      statement = {
+        rate_based_statement = {
+          limit              = var.waf_rate_limit
+          aggregate_key_type = "IP"
+        }
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "RateLimitRule"
+        sampled_requests_enabled   = true
+      }
+    }
+  ]
+
+  tags = local.tags
+}
+
+################################################################################
 # ACM Certificate (Use Existing)
 ################################################################################
 
