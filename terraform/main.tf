@@ -245,12 +245,7 @@ module "waf" {
     AWSManagedRulesCommonRuleSet = {
       name            = "AWSManagedRulesCommonRuleSet"
       priority        = 1
-      override_action = [{ none = {} }]
-      statement = [{
-        managed_rule_group_statement = [{
-          name        = "AWSManagedRulesCommonRuleSet"
-          vendor_name = "AWS"
-        }]
+      override_action = [{ none = [{}] }]
       }]
       visibility_config = [{
         cloudwatch_metrics_enabled = true
@@ -263,7 +258,7 @@ module "waf" {
     AWSManagedRulesKnownBadInputsRuleSet = {
       name            = "AWSManagedRulesKnownBadInputsRuleSet"
       priority        = 2
-      override_action = [{ none = {} }]
+      override_action = [{ none = [{}] }]
       statement = [{
         managed_rule_group_statement = [{
           name        = "AWSManagedRulesKnownBadInputsRuleSet"
@@ -281,7 +276,7 @@ module "waf" {
     RateLimitRule = {
       name    = "RateLimitRule"
       priority = 3
-      action  = [{ block = {} }]
+      action  = [{ block = [{}] }]
       statement = [{
         rate_based_statement = [{
           limit              = var.waf_rate_limit
