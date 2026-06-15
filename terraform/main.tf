@@ -239,59 +239,62 @@ module "waf" {
     "arn:aws:apigateway:${var.region}::/restapis/${module.api_gateway.id}/stages/${module.api_gateway.stage_name}"
   ]
 
-  web_acl_rules = [
-    # Rule 1 — AWS Managed Common Rule Set (known attack patterns)
-    {
-      name     = "AWSManagedRulesCommonRuleSet"
-      priority = 1
-      override_action = { none = {} }
-      statement = {
-        managed_rule_group_statement = {
+  # web_acl_rules must be a map — keys are used as identifiers, iterated with keys()
+  web_acl_rules = {
+    # Rule 1 — AWS Managed Common Rule Set (OWASP Top 10, SQLi, XSS)
+    AWSManagedRulesCommonRuleSet = {
+      name            = "AWSManagedRulesCommonRuleSet"
+      priority        = 1
+      override_action = [{ none = {} }]
+      statement = [{
+        managed_rule_group_statement = [{
           name        = "AWSManagedRulesCommonRuleSet"
           vendor_name = "AWS"
-        }
-      }
-      visibility_config = {
+        }]
+      }]
+      visibility_config = [{
         cloudwatch_metrics_enabled = true
         metric_name                = "AWSManagedRulesCommonRuleSet"
         sampled_requests_enabled   = true
-      }
-    },
-    # Rule 2 — AWS Known Bad Inputs
-    {
-      name     = "AWSManagedRulesKnownBadInputsRuleSet"
-      priority = 2
-      override_action = { none = {} }
-      statement = {
-        managed_rule_group_statement = {
+      }]
+    }
+
+    # Rule 2 — AWS Known Bad Inputs (Log4Shell, SSRF)
+    AWSManagedRulesKnownBadInputsRuleSet = {
+      name            = "AWSManagedRulesKnownBadInputsRuleSet"
+      priority        = 2
+      override_action = [{ none = {} }]
+      statement = [{
+        managed_rule_group_statement = [{
           name        = "AWSManagedRulesKnownBadInputsRuleSet"
           vendor_name = "AWS"
-        }
-      }
-      visibility_config = {
+        }]
+      }]
+      visibility_config = [{
         cloudwatch_metrics_enabled = true
         metric_name                = "AWSManagedRulesKnownBadInputsRuleSet"
         sampled_requests_enabled   = true
-      }
-    },
-    # Rule 3 — Rate limiting (DDoS / abuse protection)
-    {
-      name     = "RateLimitRule"
+      }]
+    }
+
+    # Rule 3 — Rate limiting per IP (DDoS / abuse protection)
+    RateLimitRule = {
+      name    = "RateLimitRule"
       priority = 3
-      action   = { block = {} }
-      statement = {
-        rate_based_statement = {
+      action  = [{ block = {} }]
+      statement = [{
+        rate_based_statement = [{
           limit              = var.waf_rate_limit
           aggregate_key_type = "IP"
-        }
-      }
-      visibility_config = {
+        }]
+      }]
+      visibility_config = [{
         cloudwatch_metrics_enabled = true
         metric_name                = "RateLimitRule"
         sampled_requests_enabled   = true
-      }
+      }]
     }
-  ]
+  }
 
   tags = local.tags
 }
