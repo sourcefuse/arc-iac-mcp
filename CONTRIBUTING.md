@@ -6,9 +6,9 @@ Thank you for your interest in contributing! This project welcomes improvements 
 
 ### Reporting Issues
 
-- Use the GitHub issue tracker
-- Include your AI client (Claude, Cursor, Kiro, etc.), OS, and Python version
-- Provide a minimal reproduction when reporting bugs
+- Report issues through GitHub Issues.
+- When reporting a bug, include steps to reproduce it, expected behavior, and any relevant logs or screenshots.
+
 
 ### Pull Requests
 
