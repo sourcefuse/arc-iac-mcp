@@ -8,6 +8,22 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI
 
 ARC IaC MCP Server runs as a hosted service. AI clients speak MCP (JSON-RPC over HTTPS); the server fetches module metadata from the public **Terraform Registry** and delegates HCL security scans to a **tfsec** service.
 
+---
+
+## Why ARC IaC MCP?
+
+Without this server, using ARC modules means manually browsing the Terraform Registry, reading READMEs, copying input definitions, and wiring modules together by hand. With it:
+
+- **Discover** — search and filter 58 modules by keyword or AWS resource type in seconds
+- **Understand** — get inputs, outputs, and resources for any module without leaving your editor
+- **Scaffold** — generate production-ready, multi-file Terraform with cross-module wiring already done
+- **Secure** — scan generated or existing HCL for misconfigurations before it hits a PR
+- **Compare** — side-by-side diff of modules to make informed architectural decisions
+
+All through natural language, inside the tools you already use.
+
+---
+
 ## Quick Start
 
 ### Claude Desktop
